@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -12,29 +12,39 @@ model User {
   id        String     @id @default(cuid())
   clerkId   String     @unique
   email     String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   workflows Workflow[]
 }
 
 model Workflow {
-  id        String        @id @default(cuid())
-  name      String
-  userId    String
-  nodes     Json
-  edges     Json
-  createdAt DateTime      @default(now())
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  runs      WorkflowRun[]
+  id           String        @id @default(cuid())
+  name         String        @default("Untitled Workflow")
+  userId       String
+  nodes        Json          @default("[]")
+  edges        Json          @default("[]")
+  lastOpenedAt DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runs         WorkflowRun[]
+
+  @@index([userId])
+  @@index([updatedAt])
 }
 
 model WorkflowRun {
   id          String          @id @default(cuid())
   workflowId  String
   status      String
+  scope       String
   startedAt   DateTime        @default(now())
   completedAt DateTime?
-  scope       String
+  duration    Float?
   workflow    Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   executions  NodeExecution[]
+
+  @@index([workflowId])
 }
 
 model NodeExecution {
@@ -43,9 +53,13 @@ model NodeExecution {
   nodeId        String
   nodeType      String
   status        String
-  inputs        Json
-  outputs       Json
-  executionTime Int?
+  inputs        Json?
+  outputs       Json?
   error         String?
+  executionTime Float?
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
   run           WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
 }

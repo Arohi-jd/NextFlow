@@ -27,7 +27,7 @@ export default function RootLayout({
   }
 
   return (
-    <ClerkProvider signInFallbackRedirectUrl="/workflow" signUpFallbackRedirectUrl="/workflow">
+    <ClerkProvider signInFallbackRedirectUrl="/" signUpFallbackRedirectUrl="/">
       {body}
     </ClerkProvider>
   );

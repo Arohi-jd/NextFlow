@@ -7,7 +7,7 @@ export type AppAuthUser = {
 };
 
 export function isDevelopmentAuthBypassEnabled(): boolean {
-  return process.env.NODE_ENV !== "production";
+  return process.env.DEV_AUTH_BYPASS === "true";
 }
 
 export async function getAppAuthUser(): Promise<AppAuthUser | null> {

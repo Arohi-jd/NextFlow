@@ -1,0 +1,108 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#0A0A0A"/>
+  <rect x="0" y="0" width="1440" height="64" fill="#111111"/>
+  <rect x="24" y="16" width="32" height="32" rx="10" fill="#2A2140"/>
+  <path d="M40 20L31 36H38L34 46L49 28H41L45 20H40Z" fill="#A78BFA"/>
+  <text x="72" y="39" fill="white" font-family="Arial, sans-serif" font-size="22" font-weight="700">NextFlow</text>
+  <rect x="472" y="16" width="360" height="32" rx="10" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="542" y="37" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="600">Product Marketing Kit Generator</text>
+  <rect x="1080" y="16" width="124" height="32" rx="10" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="1112" y="37" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Load Sample</text>
+  <rect x="1218" y="16" width="130" height="32" rx="10" fill="#8B5CF6"/>
+  <text x="1254" y="37" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Run Workflow</text>
+  <circle cx="1392" cy="32" r="16" fill="#262626"/>
+  <rect x="0" y="64" width="260" height="836" fill="#111111"/>
+  <rect x="1180" y="64" width="260" height="836" fill="#111111"/>
+  <rect x="260" y="64" width="920" height="836" fill="#0A0A0A"/>
+  <g opacity="0.35">
+    <circle cx="340" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="388" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="436" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="484" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="532" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="580" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="628" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="676" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="724" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="772" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="820" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="868" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="916" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="964" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1012" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1060" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1108" cy="144" r="1.5" fill="#2A2A2A"/>
+    <circle cx="340" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="388" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="436" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="484" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="532" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="580" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="628" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="676" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="724" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="772" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="820" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="868" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="916" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="964" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1012" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1060" cy="192" r="1.5" fill="#2A2A2A"/>
+    <circle cx="1108" cy="192" r="1.5" fill="#2A2A2A"/>
+  </g>
+  <rect x="20" y="96" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="126" fill="#3B82F6" font-family="Arial, sans-serif" font-size="14" font-weight="700">Text</text>
+  <rect x="20" y="156" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="186" fill="#8B5CF6" font-family="Arial, sans-serif" font-size="14" font-weight="700">Upload Image</text>
+  <rect x="20" y="216" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="246" fill="#EC4899" font-family="Arial, sans-serif" font-size="14" font-weight="700">Upload Video</text>
+  <rect x="20" y="276" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="306" fill="#22C55E" font-family="Arial, sans-serif" font-size="14" font-weight="700">Run LLM</text>
+  <rect x="20" y="336" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="366" fill="#F59E0B" font-family="Arial, sans-serif" font-size="14" font-weight="700">Crop Image</text>
+  <rect x="20" y="396" width="220" height="48" rx="12" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="42" y="426" fill="#06B6D4" font-family="Arial, sans-serif" font-size="14" font-weight="700">Extract Frame</text>
+  <rect x="1210" y="96" width="200" height="36" rx="10" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <text x="1232" y="119" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Workflow History</text>
+  <rect x="1210" y="150" width="200" height="104" rx="14" fill="#1A1A1A" stroke="#2A2A2A"/>
+  <rect x="1210" y="150" width="4" height="104" rx="2" fill="#22C55E"/>
+  <text x="1232" y="180" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Run #12</text>
+  <text x="1232" y="202" fill="#888888" font-family="Arial, sans-serif" font-size="12">Success • 4.28s</text>
+  <text x="1232" y="228" fill="#D4D4D8" font-family="Arial, sans-serif" font-size="12">Generate Marketing Copy</text>
+  <text x="1232" y="246" fill="#888888" font-family="Arial, sans-serif" font-size="11">Output expanded in panel</text>
+  <path d="M560 174C602 174 604 174 646 174" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <path d="M560 334C602 334 604 334 646 334" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <path d="M560 494C602 494 604 494 646 494" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <path d="M880 334C930 334 946 370 996 434" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <path d="M880 690C934 690 948 624 996 498" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <rect x="320" y="120" width="240" height="108" rx="14" fill="#141414" stroke="#2A2A2A"/>
+  <rect x="320" y="120" width="6" height="108" rx="3" fill="#8B5CF6"/>
+  <text x="344" y="152" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Upload Image</text>
+  <rect x="320" y="280" width="240" height="108" rx="14" fill="#141414" stroke="#8B5CF6"/>
+  <rect x="320" y="280" width="6" height="108" rx="3" fill="#3B82F6"/>
+  <text x="344" y="312" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">System Prompt</text>
+  <rect x="344" y="328" width="180" height="32" rx="8" fill="#1A1A1A"/>
+  <rect x="320" y="440" width="240" height="108" rx="14" fill="#141414" stroke="#2A2A2A"/>
+  <rect x="320" y="440" width="6" height="108" rx="3" fill="#3B82F6"/>
+  <text x="344" y="472" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Product Details</text>
+  <rect x="640" y="120" width="240" height="108" rx="14" fill="#141414" stroke="#2A2A2A"/>
+  <rect x="640" y="120" width="6" height="108" rx="3" fill="#F59E0B"/>
+  <text x="664" y="152" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Crop Image</text>
+  <rect x="640" y="280" width="240" height="128" rx="14" fill="#141414" stroke="#8B5CF6"/>
+  <rect x="640" y="280" width="6" height="128" rx="3" fill="#22C55E"/>
+  <text x="664" y="312" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Run LLM</text>
+  <rect x="664" y="336" width="136" height="28" rx="8" fill="#1A1A1A"/>
+  <rect x="664" y="372" width="168" height="18" rx="6" fill="#143121"/>
+  <rect x="320" y="600" width="240" height="108" rx="14" fill="#141414" stroke="#2A2A2A"/>
+  <rect x="320" y="600" width="6" height="108" rx="3" fill="#EC4899"/>
+  <text x="344" y="632" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Upload Video</text>
+  <rect x="640" y="600" width="240" height="108" rx="14" fill="#141414" stroke="#2A2A2A"/>
+  <rect x="640" y="600" width="6" height="108" rx="3" fill="#06B6D4"/>
+  <text x="664" y="632" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Extract Frame</text>
+  <rect x="960" y="440" width="240" height="128" rx="14" fill="#141414" stroke="#8B5CF6"/>
+  <rect x="960" y="440" width="6" height="128" rx="3" fill="#22C55E"/>
+  <text x="984" y="472" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="700">Create Full Campaign</text>
+  <rect x="984" y="496" width="176" height="18" rx="6" fill="#143121"/>
+  <rect x="1018" y="744" width="134" height="98" rx="12" fill="#111111" stroke="#2A2A2A"/>
+  <rect x="1036" y="762" width="98" height="62" rx="8" fill="#1A1A1A"/>
+</svg>

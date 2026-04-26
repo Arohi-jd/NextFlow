@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { type Edge, type Node } from "@xyflow/react";
 import { z } from "zod";
-import { getAppAuthUser } from "@/lib/auth";
 import { getGeminiApiKey, getGroqApiKey, getTransloaditConfig } from "@/lib/env";
+import { getOrCreateUser } from "@/lib/helpers/getOrCreateUser";
 import { prisma } from "@/lib/prisma";
 import { cropImageWithTransloadit, extractFrameWithTransloadit } from "@/lib/transloadit";
 import {
@@ -52,20 +52,6 @@ type RunRecord = {
 
 const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
 
-async function ensureDbUser(): Promise<{ id: string; clerkId: string; email: string } | null> {
-  const authUser = await getAppAuthUser();
-  if (!authUser) return null;
-
-  return prisma.user.upsert({
-    where: { clerkId: authUser.externalId },
-    update: { email: authUser.email },
-    create: {
-      clerkId: authUser.externalId,
-      email: authUser.email
-    }
-  });
-}
-
 function mapRun(run: RunRecord, runNumber: number, nodesById: Map<string, Node<NodeData>>): WorkflowRun {
   return {
     id: run.id,
@@ -92,7 +78,9 @@ function mapRun(run: RunRecord, runNumber: number, nodesById: Map<string, Node<N
   };
 }
 
-function getTargetField(handleId?: string | null): "systemPrompt" | "userMessage" | "images" | "imageUrl" | "videoUrl" | "timestamp" | "text" | null {
+function getTargetField(
+  handleId?: string | null
+): "systemPrompt" | "userMessage" | "images" | "imageUrl" | "videoUrl" | "timestamp" | "text" | "xPercent" | "yPercent" | "widthPercent" | "heightPercent" | null {
   if (!handleId) return null;
   if (handleId.includes("system_prompt")) return "systemPrompt";
   if (handleId.includes("user_message")) return "userMessage";
@@ -100,6 +88,10 @@ function getTargetField(handleId?: string | null): "systemPrompt" | "userMessage
   if (handleId.includes("image_url")) return "imageUrl";
   if (handleId.includes("video_url")) return "videoUrl";
   if (handleId.includes("timestamp")) return "timestamp";
+  if (handleId.includes("x_percent")) return "xPercent";
+  if (handleId.includes("y_percent")) return "yPercent";
+  if (handleId.includes("width_percent")) return "widthPercent";
+  if (handleId.includes("height_percent")) return "heightPercent";
   if (handleId.includes("text")) return "text";
   return null;
 }
@@ -316,11 +308,13 @@ async function runGeminiInline(inputs: Record<string, unknown>): Promise<NodeRes
 
   const modelName = String(inputs.model ?? "gemini-2.0-flash");
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({ model: modelName });
+  const model = client.getGenerativeModel({
+    model: modelName,
+    ...(systemPrompt ? { systemInstruction: systemPrompt } : {})
+  });
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
-  if (systemPrompt) parts.push({ text: systemPrompt });
   if (userMessage) parts.push({ text: userMessage });
 
   if (Array.isArray(inputs.images)) {
@@ -337,6 +331,9 @@ async function runGeminiInline(inputs: Record<string, unknown>): Promise<NodeRes
       }
     }
   }
+
+  // Gemini requires at least one user part
+  if (parts.length === 0) parts.push({ text: systemPrompt });
 
   const response = await model.generateContent({ contents: [{ role: "user", parts }] });
   const output = response.response.text();
@@ -433,10 +430,7 @@ async function runTriggerTask<TPayload extends Record<string, unknown>, TOutput 
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const user = await ensureDbUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getOrCreateUser();
 
     const parsed = executeSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -493,11 +487,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     // run (e.g. "Run Node" on an LLM) can still read values from upstream nodes
     // that are not part of the current execution scope.
     const allNodesById = new Map(nodes.map((node) => [node.id, node]));
+    const runStartedAt = new Date();
     const run = await prisma.workflowRun.create({
       data: {
         workflowId,
         status: "running",
-        scope
+        scope,
+        startedAt: runStartedAt
       }
     });
 
@@ -646,11 +642,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
     }
 
+    const runCompletedAt = new Date();
     await prisma.workflowRun.update({
       where: { id: run.id },
       data: {
         status: failed ? (hadSuccess ? "partial" : "failed") : "success",
-        completedAt: new Date()
+        completedAt: runCompletedAt,
+        duration: (runCompletedAt.getTime() - runStartedAt.getTime()) / 1000
       }
     });
 
@@ -671,6 +669,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       run: mapRun(completedRun, runCount, nodesById)
     });
   } catch (error) {
+    console.error("POST /api/execute failed:", error);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     return NextResponse.json({ error: "Failed to execute workflow", details: `${error}` }, { status: 500 });
   }
 }

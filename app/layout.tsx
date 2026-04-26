@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { isDevelopmentAuthBypassEnabled } from "@/lib/auth";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NextFlow",
@@ -16,13 +14,21 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const body = (
+    <html lang="en">
+      <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
+        {children}
+      </body>
+    </html>
+  );
+
+  if (isDevelopmentAuthBypassEnabled()) {
+    return body;
+  }
+
   return (
     <ClerkProvider signInFallbackRedirectUrl="/workflow" signUpFallbackRedirectUrl="/workflow">
-      <html lang="en">
-        <body className={`${inter.className} bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased`}>
-          {children}
-        </body>
-      </html>
+      {body}
     </ClerkProvider>
   );
 }

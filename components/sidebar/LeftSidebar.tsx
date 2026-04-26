@@ -62,9 +62,10 @@ const nodeDefinitions: NodeDefinition[] = [
 interface LeftSidebarProps {
   isCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
+  onAddNode?: (type: NodeType) => void;
 }
 
-export default function LeftSidebar({ isCollapsed = false, onCollapsedChange }: LeftSidebarProps) {
+export default function LeftSidebar({ isCollapsed = false, onCollapsedChange, onAddNode }: LeftSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredNode, setHoveredNode] = useState<NodeType | null>(null);
   const [workflows] = useState<string[]>(["Product Marketing Kit", "Social Media Content", "Email Generator"]);
@@ -136,6 +137,7 @@ export default function LeftSidebar({ isCollapsed = false, onCollapsedChange }: 
                     type="button"
                     draggable
                     onDragStart={(event) => handleNodeDragStart(event, node.type)}
+                    onClick={() => onAddNode?.(node.type)}
                     onMouseEnter={() => setHoveredNode(node.type)}
                     onMouseLeave={() => setHoveredNode(null)}
                     className="group w-full cursor-grab rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-tertiary)] p-3 text-left transition-all duration-200 hover:border-[var(--accent-purple)] hover:bg-[#1f1a2e] active:cursor-grabbing"

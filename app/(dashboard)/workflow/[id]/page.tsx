@@ -9,7 +9,7 @@ type WorkflowPageProps = {
 
 export default function WorkflowPage({ params }: WorkflowPageProps) {
   return (
-    <section className="h-full min-h-[calc(100vh-56px)] bg-[var(--bg-primary)]">
+    <section className="h-screen min-h-screen bg-[#111111]">
       <ReactFlowProvider>
         <WorkflowCanvas workflowId={params.id} />
       </ReactFlowProvider>

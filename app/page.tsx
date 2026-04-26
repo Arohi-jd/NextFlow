@@ -26,7 +26,7 @@ export default async function HomePage() {
             </Link>
           )}
           <Link className="rounded-full bg-violet-500 px-5 py-3 text-sm font-medium text-white transition hover:bg-violet-400" href="/sign-in">
-            Sign in
+            Log in
           </Link>
           <Link className="rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-900" href="/sign-up">
             Sign up

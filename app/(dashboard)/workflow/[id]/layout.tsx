@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { SignOutButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Loader2, Play, Sparkles, Zap } from "lucide-react";
 import LeftSidebar from "@/components/sidebar/LeftSidebar";
 import RightSidebar from "@/components/sidebar/RightSidebar";
@@ -24,7 +24,6 @@ export default function WorkflowLayout({ children }: WorkflowLayoutProps) {
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState(false);
   const [localName, setLocalName] = useState(workflowName);
-  const isDevelopmentBypass = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     setLocalName(workflowName);
@@ -79,16 +78,27 @@ export default function WorkflowLayout({ children }: WorkflowLayoutProps) {
               {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               Run Workflow
             </button>
-            {isDevelopmentBypass ? (
+            <SignedIn>
+              <>
+                <UserButton afterSignOutUrl="/sign-in" />
+                <SignOutButton redirectUrl="/sign-in">
+                  <button
+                    type="button"
+                    className="inline-flex h-9 items-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-xs font-semibold text-[var(--text-primary)] transition hover:border-[var(--border-hover)]"
+                  >
+                    Log out
+                  </button>
+                </SignOutButton>
+              </>
+            </SignedIn>
+            <SignedOut>
               <Link
-                href="/"
-                className="inline-flex h-9 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-xs font-semibold text-[var(--text-primary)] transition hover:border-[var(--border-hover)]"
+                href="/sign-in"
+                className="inline-flex h-9 items-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-3 text-xs font-semibold text-[var(--text-primary)] transition hover:border-[var(--border-hover)]"
               >
-                Dev User
+                Log in
               </Link>
-            ) : (
-              <UserButton afterSignOutUrl="/sign-in" />
-            )}
+            </SignedOut>
           </div>
         </div>
       </header>

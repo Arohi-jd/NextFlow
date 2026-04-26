@@ -81,7 +81,7 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
             value={data.model ?? "llama-3.3-70b-versatile"}
             onChange={(event) =>
               updateNodeData(id, {
-                model: event.target.value as "gemini-1.5-flash" | "gemini-1.5-pro" | "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct"
+                model: event.target.value as "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct"
               })
             }
             className="w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 py-2 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-purple)]"
@@ -93,15 +93,17 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
             </optgroup>
             <optgroup label="Google Gemini">
               <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
             </optgroup>
           </select>
         </div>
 
         <button
           type="button"
-          onClick={() => void handleRunNode()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            void handleRunNode();
+          }}
           disabled={isRunning}
           className="w-full rounded-md bg-[var(--accent-green)] px-2 py-2 text-xs font-medium text-white transition hover:bg-[#1ea84f] disabled:cursor-wait disabled:opacity-60"
         >

@@ -50,6 +50,8 @@ type RunRecord = {
   }>;
 };
 
+const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+
 async function ensureDbUser(): Promise<{ id: string; clerkId: string; email: string } | null> {
   const authUser = await getAppAuthUser();
   if (!authUser) return null;
@@ -234,8 +236,23 @@ function getDemoUploadValue(workflowName: string, node: Node<NodeData>): string 
   return "";
 }
 
+function normalizeTimestampInput(value: unknown): string {
+  const raw = typeof value === "string" ? value : String(value ?? "");
+  return raw.trim() || "0";
+}
+
 function isGroqModel(modelName: string): boolean {
   return !modelName.startsWith("gemini-");
+}
+
+function isGeminiRecoverableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("429") ||
+    message.includes("quota") ||
+    message.includes("rate limit") ||
+    (message.includes("404") && message.includes("not found"))
+  );
 }
 
 async function runGroqInline(inputs: Record<string, unknown>): Promise<NodeResult> {
@@ -327,6 +344,18 @@ async function runGeminiInline(inputs: Record<string, unknown>): Promise<NodeRes
   return { output };
 }
 
+async function runGeminiInlineWithFallback(inputs: Record<string, unknown>): Promise<NodeResult> {
+  try {
+    return await runGeminiInline(inputs);
+  } catch (error) {
+    if (!isGeminiRecoverableError(error)) {
+      throw error;
+    }
+
+    return runGroqInline({ ...inputs, model: DEFAULT_GROQ_MODEL });
+  }
+}
+
 const VIDEO_EXTENSION_RE = /\.(mp4|mov|webm|avi|mkv|m4v|ogv|3gp)(\?|#|$)/i;
 
 async function resolveImageUrls(urls: unknown[]): Promise<string[]> {
@@ -345,13 +374,13 @@ async function resolveImageUrls(urls: unknown[]): Promise<string[]> {
 }
 
 async function runLlmInline(inputs: Record<string, unknown>): Promise<NodeResult> {
-  const modelName = String(inputs.model ?? "llama-3.3-70b-versatile");
+  const modelName = String(inputs.model ?? DEFAULT_GROQ_MODEL);
   const resolvedImages = await resolveImageUrls(Array.isArray(inputs.images) ? inputs.images : []);
   const resolvedInputs = { ...inputs, images: resolvedImages };
   if (isGroqModel(modelName)) {
     return runGroqInline(resolvedInputs);
   }
-  return runGeminiInline(resolvedInputs);
+  return runGeminiInlineWithFallback(resolvedInputs);
 }
 
 async function runCropInline(inputs: Record<string, unknown>): Promise<NodeResult> {
@@ -512,7 +541,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             "llm-execute",
             {
               nodeExecutionId: executionId,
-              model: String(inputs.model ?? node.data.model ?? "gemini-2.0-flash"),
+              model: String(inputs.model ?? node.data.model ?? DEFAULT_GROQ_MODEL),
               systemPrompt: String(inputs.systemPrompt ?? ""),
               userMessage: String(inputs.userMessage ?? inputs.text ?? ""),
               images: Array.isArray(inputs.images) ? inputs.images : []
@@ -520,7 +549,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             () =>
               runLlmInline({
                 ...inputs,
-                model: inputs.model ?? node.data.model ?? "gemini-2.0-flash"
+                model: inputs.model ?? node.data.model ?? DEFAULT_GROQ_MODEL
               })
           );
         } else if (node.type === "crop-image") {
@@ -537,14 +566,16 @@ export async function POST(request: Request): Promise<NextResponse> {
             () => runCropInline(inputs)
           );
         } else if (node.type === "extract-frame") {
+          const timestamp = normalizeTimestampInput(inputs.timestamp);
+
           result = await runTriggerTask(
             "extract-frame",
             {
               nodeExecutionId: executionId,
               videoUrl: String(inputs.videoUrl ?? ""),
-              timestamp: String(inputs.timestamp ?? "0")
+              timestamp
             },
-            () => runExtractFrameInline(inputs)
+            () => runExtractFrameInline({ ...inputs, timestamp })
           );
         } else if (node.type === "upload-image") {
           const imageUrl = String(inputs.imageUrl ?? node.data.imageUrl ?? getDemoUploadValue(workflowName, node) ?? "");

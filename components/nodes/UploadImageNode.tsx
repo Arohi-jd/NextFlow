@@ -83,7 +83,11 @@ export default function UploadImageNode({ id, data, selected = false }: UploadIm
             </div>
             <button
               type="button"
-              onClick={() => updateNodeData(id, { imageUrl: "", fileName: "", fileSize: 0 })}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                updateNodeData(id, { imageUrl: "", fileName: "", fileSize: 0 });
+              }}
               className="text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
             >
               Replace image
@@ -93,7 +97,11 @@ export default function UploadImageNode({ id, data, selected = false }: UploadIm
           <button
             type="button"
             disabled={Boolean(data.isUploading)}
-            onClick={() => fileInputRef.current?.click()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              fileInputRef.current?.click();
+            }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();

@@ -25,7 +25,7 @@ export interface NodeData {
   systemPrompt?: string;
   userMessage?: string;
   images?: string[];
-  model?: "gemini-1.5-flash" | "gemini-1.5-pro" | "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct";
+  model?: "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct";
   imageUrl?: string;
   videoUrl?: string;
   output?: string;

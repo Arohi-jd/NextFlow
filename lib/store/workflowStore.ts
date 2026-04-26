@@ -161,7 +161,16 @@ async function fetchWorkflow(workflowId: string): Promise<{
   runs: WorkflowRun[];
 }> {
   const response = await fetch(`/api/workflows/${workflowId}`);
-  if (!response.ok) throw new Error("Failed to load workflow");
+
+  if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.location.assign("/sign-in");
+    }
+
+    const details = await response.text().catch(() => "");
+    throw new Error(`Failed to load workflow (${response.status}): ${details || response.statusText || "Unknown error"}`);
+  }
+
   return response.json();
 }
 
@@ -438,12 +447,11 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     }
 
     const runScope: RunScope = scope === "Selected" && state.selectedNodes.length === 1 ? "Single" : scope;
+    const activeNodeIds = runScope === "Full" ? state.nodes.map((node) => node.id) : [...state.selectedNodes];
 
     set({
       isRunning: true,
-      runningNodes: new Set(
-        runScope === "Selected" ? state.selectedNodes : state.nodes.map((node) => node.id)
-      ),
+      runningNodes: new Set(activeNodeIds),
       nodes: state.nodes.map((node) => ({
         ...node,
         data: {

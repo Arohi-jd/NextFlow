@@ -17,6 +17,7 @@ export const extractFrameTask = task({
   id: "extract-frame",
   run: async (payload: ExtractFrameTaskPayload): Promise<ExtractFrameTaskOutput> => {
     const startedAt = Date.now();
+    const normalizedTimestamp = String(payload.timestamp ?? "").trim() || "0";
 
     await prisma.nodeExecution.update({
       where: { id: payload.nodeExecutionId },
@@ -28,7 +29,7 @@ export const extractFrameTask = task({
         throw new Error("videoUrl is required");
       }
 
-      const outputUrl = await extractFrameWithTransloadit(payload.videoUrl, payload.timestamp);
+      const outputUrl = await extractFrameWithTransloadit(payload.videoUrl, normalizedTimestamp);
 
       await prisma.nodeExecution.update({
         where: { id: payload.nodeExecutionId },

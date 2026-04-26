@@ -101,7 +101,11 @@ export default function CropImageNode({ id, data, selected = false }: CropImageN
         {hasConnectedImageInput && (
           <button
             type="button"
-            onClick={() => void handleRunNode()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleRunNode();
+            }}
             disabled={isRunning}
             className="w-full rounded-md bg-[#f59e0b] px-2 py-2 text-xs font-medium text-black transition hover:bg-[#f5b922] disabled:cursor-wait disabled:opacity-60"
           >

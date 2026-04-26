@@ -86,7 +86,11 @@ export default function ExtractFrameNode({ id, data, selected = false }: Extract
         {hasConnectedVideoInput && (
           <button
             type="button"
-            onClick={() => void handleRunNode()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleRunNode();
+            }}
             disabled={isRunning}
             className="w-full rounded-md bg-[#06b6d4] px-2 py-2 text-xs font-medium text-black transition hover:bg-[#06d9f5] disabled:cursor-wait disabled:opacity-60"
           >
@@ -102,8 +106,10 @@ export default function ExtractFrameNode({ id, data, selected = false }: Extract
         )}
 
         {data.outputUrl && (
-          <div className="rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-1.5 text-[11px] text-cyan-100">
-            Frame extracted successfully
+          <div className="space-y-2 rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-2 text-[11px] text-cyan-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.outputUrl} alt="Extracted video frame" className="h-28 w-full rounded object-cover" />
+            <div>Frame extracted successfully</div>
           </div>
         )}
       </div>

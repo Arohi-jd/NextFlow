@@ -18,8 +18,20 @@ type LlmTaskOutput = {
   output: string;
 };
 
+const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+
 function isGroqModel(modelName: string): boolean {
   return !modelName.startsWith("gemini-");
+}
+
+function isGeminiRecoverableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("429") ||
+    message.includes("quota") ||
+    message.includes("rate limit") ||
+    (message.includes("404") && message.includes("not found"))
+  );
 }
 
 const VIDEO_EXTENSION_RE = /\.(mp4|mov|webm|avi|mkv|m4v|ogv|3gp)(\?|#|$)/i;
@@ -112,6 +124,18 @@ async function callGemini(payload: LlmTaskPayload): Promise<string> {
   return output;
 }
 
+async function callGeminiWithFallback(payload: LlmTaskPayload): Promise<string> {
+  try {
+    return await callGemini(payload);
+  } catch (error) {
+    if (!isGeminiRecoverableError(error)) {
+      throw error;
+    }
+
+    return callGroq({ ...payload, model: DEFAULT_GROQ_MODEL });
+  }
+}
+
 export const llmTask = task({
   id: "llm-execute",
   run: async (payload: LlmTaskPayload): Promise<LlmTaskOutput> => {
@@ -128,7 +152,7 @@ export const llmTask = task({
 
       const output = isGroqModel(resolvedPayload.model)
         ? await callGroq(resolvedPayload)
-        : await callGemini(resolvedPayload);
+        : await callGeminiWithFallback(resolvedPayload);
 
       await prisma.nodeExecution.update({
         where: { id: payload.nodeExecutionId },

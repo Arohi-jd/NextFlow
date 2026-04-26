@@ -194,6 +194,8 @@ export async function cropImageWithTransloadit(inputUrl: string, crop: {
 }
 
 export async function extractFrameWithTransloadit(videoUrl: string, timestamp: string): Promise<string> {
+  const normalizedTimestamp = normalizeFrameOffset(timestamp);
+
   const status = await createAssembly({
     waitForCompletion: true,
     steps: {
@@ -206,7 +208,7 @@ export async function extractFrameWithTransloadit(videoUrl: string, timestamp: s
         use: "imported",
         result: true,
         ffmpeg_stack: "v6.0.0",
-        offsets: [timestamp],
+        offsets: [normalizedTimestamp],
         format: "jpg"
       }
     }
@@ -218,4 +220,34 @@ export async function extractFrameWithTransloadit(videoUrl: string, timestamp: s
   }
 
   return outputUrl;
+}
+
+function normalizeFrameOffset(timestamp: string): string {
+  const raw = timestamp.trim();
+  if (!raw) return "0";
+
+  // Accept percentage offsets like "50%"
+  if (raw.endsWith("%")) {
+    const percent = Number(raw.slice(0, -1).trim());
+    if (!Number.isFinite(percent)) {
+      throw new Error("Invalid timestamp percentage. Use values like 0, 5, 00:00:05, or 50%.");
+    }
+
+    const clamped = Math.max(0, Math.min(100, percent));
+    return `${clamped}%`;
+  }
+
+  // Accept plain seconds like "5" or "5.5"
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) {
+    return `${Math.max(0, seconds)}`;
+  }
+
+  // Accept hh:mm:ss(.ms)
+  const hhMmSsPattern = /^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?$/;
+  if (hhMmSsPattern.test(raw)) {
+    return raw;
+  }
+
+  throw new Error("Invalid timestamp format. Use values like 0, 5, 00:00:05, or 50%.");
 }

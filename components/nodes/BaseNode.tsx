@@ -56,7 +56,11 @@ export default function BaseNode({
 
         <button
           type="button"
-          onClick={() => onDeleteAction?.(id)}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDeleteAction?.(id);
+          }}
           className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--text-secondary)] opacity-0 transition hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] group-hover:opacity-100"
           title="Delete node"
         >

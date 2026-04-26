@@ -139,7 +139,9 @@ function WorkflowCanvasInner({ workflowId }: WorkflowCanvasProps) {
 
   useEffect(() => {
     if (!isLoaded || useWorkflowStore.getState().workflowId !== workflowId) {
-      void loadWorkflow(workflowId);
+      void loadWorkflow(workflowId).catch((error) => {
+        console.error("Workflow load failed:", error);
+      });
     }
   }, [isLoaded, loadWorkflow, workflowId]);
 

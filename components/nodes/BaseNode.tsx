@@ -1,19 +1,23 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { AlertCircle, Loader2, X } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BaseNodeProps {
   id: string;
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   color: string;
   isSelected: boolean;
   isRunning: boolean;
   error?: string;
   onDeleteAction?: (id: string) => void;
   children: ReactNode;
+  minWidthClassName?: string;
+  contentClassName?: string;
+  hideDelete?: boolean;
 }
 
 export default function BaseNode({
@@ -25,50 +29,60 @@ export default function BaseNode({
   isRunning,
   error,
   onDeleteAction,
-  children
+  children,
+  minWidthClassName = "min-w-[228px]",
+  contentClassName = "p-3",
+  hideDelete = false
 }: BaseNodeProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96, y: 16 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className={`group relative min-w-[260px] overflow-hidden rounded-[12px] border bg-[var(--bg-node)] shadow-[0_12px_32px_rgba(0,0,0,0.42)] transition-all duration-200 ${
-        error
-          ? "border-red-500/70 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]"
-          : isSelected
-            ? "border-[var(--accent-purple)] shadow-[0_0_0_2px_rgba(139,92,246,0.22)]"
-            : "border-[var(--border-color)]"
-      } ${isRunning ? "node-running" : ""}`}
-    >
-      <div className="absolute left-0 top-0 h-full w-1.5" style={{ backgroundColor: error ? "#ef4444" : color }} />
-
-      <div className="flex items-center gap-2 border-b border-[var(--border-color)] px-3 py-2.5">
-        <div className="ml-1.5 flex h-6 w-6 items-center justify-center rounded-md" style={{ backgroundColor: `${color}20` }}>
-          <div style={{ color }}>
-            <Icon className="h-4 w-4" />
-          </div>
+    <div className="relative">
+      <div className="pointer-events-none absolute -top-6 left-1.5 z-20 flex items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+        <div className="flex h-4 w-4 items-center justify-center" style={{ color }}>
+          <Icon className="h-3 w-3" strokeWidth={2.1} />
         </div>
-
-        <span className="text-sm font-semibold text-[var(--text-primary)]">{title}</span>
-
-        {isRunning && <Loader2 className="ml-auto h-4 w-4 animate-spin text-[var(--accent-purple-bright)]" />}
-        {!isRunning && error && <AlertCircle className="ml-auto h-4 w-4 text-red-400" />}
-
-        <button
-          type="button"
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDeleteAction?.(id);
-          }}
-          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--text-secondary)] opacity-0 transition hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] group-hover:opacity-100"
-          title="Delete node"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <span>{title}</span>
       </div>
 
-      <div className="p-3">{children}</div>
-    </motion.div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className={[
+          "group relative overflow-visible rounded-[16px] border text-[var(--text-primary)] shadow-[0_8px_22px_rgba(0,0,0,0.24)] transition-all duration-200",
+          minWidthClassName,
+          error
+            ? "border-red-500/70 shadow-[0_0_0_1px_rgba(239,68,68,0.28),0_10px_28px_rgba(0,0,0,0.28)]"
+            : isSelected
+              ? "shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
+              : "border-[var(--border-color)] hover:border-[var(--border-hover)]",
+          isRunning ? "node-running" : ""
+        ].join(" ")}
+        style={{
+          background: "var(--bg-node)",
+          borderColor: error ? "rgba(239,68,68,0.7)" : isSelected ? color : undefined,
+          boxShadow: isSelected ? `0 0 0 1px ${color}, 0 8px 22px rgba(0,0,0,0.24)` : undefined
+        }}
+      >
+        {!hideDelete ? (
+          <button
+            type="button"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDeleteAction?.(id);
+            }}
+            className="absolute right-2 top-2 z-20 flex h-5 w-5 items-center justify-center rounded-[6px] text-[var(--text-muted)] opacity-0 transition hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-secondary)] group-hover:opacity-100"
+            title="Delete node"
+          >
+            <X className="h-2.5 w-2.5" />
+          </button>
+        ) : null}
+
+        {isRunning ? <Loader2 className="absolute right-2.5 top-2.5 z-20 h-3 w-3 animate-spin text-[var(--text-secondary)]" /> : null}
+        {!isRunning && error ? <AlertCircle className="absolute right-2.5 top-2.5 z-20 h-3 w-3 text-red-400" /> : null}
+
+        <div className={contentClassName}>{children}</div>
+      </motion.div>
+    </div>
   );
 }

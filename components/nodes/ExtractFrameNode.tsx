@@ -73,6 +73,9 @@ export default function ExtractFrameNode({ id, data, selected = false }: Extract
             type="text"
             value={data.timestamp ?? "0"}
             disabled={hasConnectedTimestamp}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
             onChange={(event) => updateNodeData(id, { timestamp: event.target.value })}
             className="mt-1 w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 py-2 text-xs text-[var(--text-primary)] outline-none transition disabled:opacity-40 focus:border-[var(--accent-purple)]"
             placeholder="0 (seconds) or 50% (percentage)"
@@ -106,7 +109,7 @@ export default function ExtractFrameNode({ id, data, selected = false }: Extract
         )}
 
         {data.outputUrl && (
-          <div className="space-y-2 rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-2 text-[11px] text-cyan-100">
+          <div className="space-y-2 rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-2 text-[11px] text-[var(--text-primary)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={data.outputUrl} alt="Extracted video frame" className="h-28 w-full rounded object-cover" />
             <div>Frame extracted successfully</div>

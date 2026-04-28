@@ -1,9 +1,16 @@
 import type { Config } from "tailwindcss";
 
+const opacityScale = Object.fromEntries(
+  Array.from({ length: 99 }, (_, index) => {
+    const value = index + 1;
+    return [value, `${value / 100}`];
+  })
+);
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      opacity: opacityScale,
       colors: {
         background: "#0a0a0a",
         surface: "#111111",

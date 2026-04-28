@@ -73,12 +73,17 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
       isRunning={isRunning}
       error={data.error}
       onDeleteAction={removeNode}
+      minWidthClassName="min-w-[340px] max-w-[340px]"
+      contentClassName="px-4 py-4"
     >
       <div className="space-y-3">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-[var(--text-muted)]">Model</label>
           <select
             value={data.model ?? "llama-3.3-70b-versatile"}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
             onChange={(event) =>
               updateNodeData(id, {
                 model: event.target.value as "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct"
@@ -126,7 +131,9 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
               className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2 text-xs text-[var(--text-primary)]"
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Result</div>
-              <div className="max-h-40 overflow-y-auto whitespace-pre-wrap">{data.output}</div>
+              <div className="max-h-40 max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                {data.output}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -140,7 +147,7 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
         style={{ ...handleStyle, top: "30%", background: "#3b82f6" }}
       />
       <div
-        className="absolute left-[-80px] top-[30%] -translate-y-1/2 text-xs text-[var(--text-muted)] whitespace-nowrap"
+        className="absolute left-[-72px] top-[30%] -translate-y-1/2 text-[10px] text-[var(--text-muted)] whitespace-nowrap"
         style={{ pointerEvents: "none" }}
       >
         system_prompt
@@ -153,7 +160,7 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
         style={{ ...handleStyle, top: "45%", background: "#22c55e" }}
       />
       <div
-        className="absolute left-[-75px] top-[45%] -translate-y-1/2 text-xs text-[var(--text-muted)] whitespace-nowrap"
+        className="absolute left-[-72px] top-[45%] -translate-y-1/2 text-[10px] text-[var(--text-muted)] whitespace-nowrap"
         style={{ pointerEvents: "none" }}
       >
         user_message *
@@ -166,10 +173,10 @@ export default function LLMNode({ id, data, selected = false }: LLMNodeProps) {
         style={{ ...handleStyle, top: "60%", background: "#8b5cf6" }}
       />
       <div
-        className="absolute left-[-90px] top-[60%] -translate-y-1/2 text-xs text-[var(--text-muted)] whitespace-nowrap"
+        className="absolute left-[-72px] top-[60%] -translate-y-1/2 text-[10px] text-[var(--text-muted)] whitespace-nowrap"
         style={{ pointerEvents: "none" }}
       >
-        images (multi)
+        images
       </div>
 
       {/* Output handle */}

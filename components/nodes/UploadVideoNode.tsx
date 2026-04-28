@@ -2,9 +2,17 @@
 
 import { useRef } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { UploadCloud, Video as VideoIcon } from "lucide-react";
+import { Film, Upload, Video as VideoIcon } from "lucide-react";
 import BaseNode from "./BaseNode";
 import { useWorkflowStore } from "@/lib/store/workflowStore";
+
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm", "avi", "mkv", "m4v", "ogv", "3gp"]);
+
+function isVideoFile(file: File): boolean {
+  if (file.type.startsWith("video/")) return true;
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return Boolean(extension && VIDEO_EXTENSIONS.has(extension));
+}
 
 interface UploadVideoNodeProps {
   id: string;
@@ -23,8 +31,23 @@ export default function UploadVideoNode({ id, data, selected = false }: UploadVi
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const removeNode = useWorkflowStore((state) => state.removeNode);
   const isRunning = useWorkflowStore((state) => state.runningNodes.has(id));
+  const handleStyle = {
+    width: 12,
+    height: 12,
+    background: "#30d158",
+    border: "2px solid #30d158",
+    boxShadow: "0 0 0 2px rgba(48,209,88,0.18)"
+  } as const;
 
   const handleFileSelect = async (file: File): Promise<void> => {
+    if (!isVideoFile(file)) {
+      updateNodeData(id, {
+        isUploading: false,
+        error: "Please select a valid video file (mp4, mov, webm, avi, mkv, m4v, ogv, 3gp)."
+      });
+      return;
+    }
+
     updateNodeData(id, {
       isUploading: true,
       error: undefined
@@ -65,20 +88,23 @@ export default function UploadVideoNode({ id, data, selected = false }: UploadVi
   return (
     <BaseNode
       id={id}
-      title="Upload Video"
+      title="Video"
       icon={VideoIcon}
-      color="#ec4899"
+      color="#30d158"
       isSelected={selected}
       isRunning={isRunning}
       error={data.error}
       onDeleteAction={removeNode}
+      minWidthClassName="min-w-[184px]"
+      contentClassName="px-3.5 py-3.5"
+      hideDelete
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {data.videoUrl ? (
           <>
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video src={data.videoUrl} controls className="h-32 w-full rounded-lg bg-black object-cover" />
-            <div className="text-xs text-[var(--text-muted)]">
+            <video src={data.videoUrl} controls className="h-24 w-full rounded-[10px] bg-black object-cover" />
+            <div className="text-[10px] text-[var(--text-muted)]">
               {data.fileName} {data.fileSize ? `• ${(data.fileSize / 1024 / 1024).toFixed(2)} MB` : ""}
             </div>
             <button
@@ -88,32 +114,46 @@ export default function UploadVideoNode({ id, data, selected = false }: UploadVi
                 event.stopPropagation();
                 updateNodeData(id, { videoUrl: "", fileName: "", fileSize: 0 });
               }}
-              className="text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+              className="text-[10px] font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
             >
               Replace video
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            disabled={Boolean(data.isUploading)}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              fileInputRef.current?.click();
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              const file = event.dataTransfer.files?.[0];
-              if (file?.type.startsWith("video/")) void handleFileSelect(file);
-            }}
-            className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-[var(--border-hover)] bg-[var(--bg-tertiary)] px-4 py-6 text-center transition hover:border-[#ec4899] hover:bg-[#2d1322] disabled:cursor-wait disabled:opacity-60"
-          >
-            <UploadCloud className="h-5 w-5 text-[var(--text-muted)]" />
-            <span className="text-xs text-[var(--text-primary)]">{data.isUploading ? "Uploading..." : "Upload video"}</span>
-            <span className="text-[11px] text-[var(--text-muted)]">MP4, MOV, WebM</span>
-          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              disabled={Boolean(data.isUploading)}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const file = event.dataTransfer.files?.[0];
+                if (file) void handleFileSelect(file);
+              }}
+              className="flex h-[92px] flex-col items-center justify-center gap-2 rounded-[10px] bg-black/14 text-center transition hover:bg-black/18 disabled:cursor-wait disabled:opacity-60"
+            >
+              <Upload className="h-4 w-4 text-[var(--text-muted)]" strokeWidth={1.8} />
+              <span className="text-[11px] text-[var(--text-secondary)]">{data.isUploading ? "Uploading..." : "Upload"}</span>
+            </button>
+
+            <button
+              type="button"
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="flex h-[92px] flex-col items-center justify-center gap-2 rounded-[10px] bg-black/14 text-center transition hover:bg-black/18"
+            >
+              <Film className="h-4 w-4 text-[var(--text-muted)]" strokeWidth={1.8} />
+              <span className="text-[11px] text-[var(--text-secondary)]">Select asset</span>
+            </button>
+          </div>
         )}
 
         <input
@@ -128,18 +168,18 @@ export default function UploadVideoNode({ id, data, selected = false }: UploadVi
         />
       </div>
 
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        id={`${id}-source-video_url`}
-        style={{ background: "#ec4899", top: "50%" }}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={`${id}-target-video_url`}
+        style={{ ...handleStyle, top: "50%", left: -7 }}
       />
-      <div
-        className="absolute right-[-26px] top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] whitespace-nowrap"
-        style={{ pointerEvents: "none" }}
-      >
-        video_url
-      </div>
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={`${id}-source-video_url`}
+        style={{ ...handleStyle, top: "50%", right: -7 }}
+      />
     </BaseNode>
   );
 }

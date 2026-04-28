@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { Crop, Loader2 } from "lucide-react";
 import BaseNode from "./BaseNode";
@@ -27,23 +28,84 @@ export default function CropImageNode({ id, data, selected = false }: CropImageN
   const executeWorkflow = useWorkflowStore((state) => state.executeWorkflow);
   const isRunning = useWorkflowStore((state) => state.runningNodes.has(id));
 
+  const [draftValues, setDraftValues] = useState<{
+    xPercent: string;
+    yPercent: string;
+    widthPercent: string;
+    heightPercent: string;
+  }>({
+    xPercent: String(data.xPercent ?? 0),
+    yPercent: String(data.yPercent ?? 0),
+    widthPercent: String(data.widthPercent ?? 100),
+    heightPercent: String(data.heightPercent ?? 100)
+  });
+
+  useEffect(() => {
+    setDraftValues({
+      xPercent: String(data.xPercent ?? 0),
+      yPercent: String(data.yPercent ?? 0),
+      widthPercent: String(data.widthPercent ?? 100),
+      heightPercent: String(data.heightPercent ?? 100)
+    });
+  }, [data.xPercent, data.yPercent, data.widthPercent, data.heightPercent]);
+
   const hasConnectedImageInput = edges.some((edge) => edge.target === id && edge.targetHandle?.includes("image_url"));
-  const hasConnectedParamInput = (paramName: string) => 
+  const hasConnectedParamInput = (paramName: string) =>
     edges.some((edge) => edge.target === id && edge.targetHandle?.includes(paramName));
 
-  const renderInput = (label: string, key: "xPercent" | "yPercent" | "widthPercent" | "heightPercent", value: number, paramHandle: string) => {
+  const commitDraftValue = (key: "xPercent" | "yPercent" | "widthPercent" | "heightPercent") => {
+    const fallback = key === "xPercent" || key === "yPercent" ? 0 : 100;
+    const raw = draftValues[key].trim();
+
+    if (raw.length === 0) {
+      setDraftValues((current) => ({ ...current, [key]: String((data[key] as number | undefined) ?? fallback) }));
+      return;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      setDraftValues((current) => ({ ...current, [key]: String((data[key] as number | undefined) ?? fallback) }));
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(100, parsed));
+    setDraftValues((current) => ({ ...current, [key]: String(clamped) }));
+    updateNodeData(id, { [key]: clamped });
+  };
+
+  const renderInput = (label: string, key: "xPercent" | "yPercent" | "widthPercent" | "heightPercent", paramHandle: string) => {
     const isLocked = hasConnectedParamInput(paramHandle);
     return (
       <label className="flex items-center justify-between gap-3 text-xs text-[var(--text-primary)]">
         <span className="font-medium text-[var(--text-muted)]">{label}</span>
         <div className="flex items-center gap-1">
           <input
-            type="number"
-            min={0}
-            max={100}
-            value={value}
+            type="text"
+            inputMode="decimal"
+            value={draftValues[key]}
             disabled={isLocked}
-            onChange={(event) => updateNodeData(id, { [key]: Number(event.target.value) })}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitDraftValue(key);
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                const fallback = key === "xPercent" || key === "yPercent" ? 0 : 100;
+                setDraftValues((current) => ({ ...current, [key]: String((data[key] as number | undefined) ?? fallback) }));
+              }
+            }}
+            onBlur={() => commitDraftValue(key)}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (/^\d{0,3}(\.\d{0,2})?$/.test(next)) {
+                setDraftValues((current) => ({ ...current, [key]: next }));
+              }
+            }}
             className="h-8 w-16 rounded-md border border-[var(--border-color)] bg-[var(--bg-tertiary)] px-2 text-right outline-none transition disabled:opacity-40 focus:border-[var(--accent-purple)]"
           />
           <span className="text-[var(--text-muted)]">%</span>
@@ -69,6 +131,7 @@ export default function CropImageNode({ id, data, selected = false }: CropImageN
     } catch (error) {
       console.error("Failed to run node:", error);
     } finally {
+      useWorkflowStore.getState().clearSelection();
       if (currentSelection.length > 0) {
         useWorkflowStore.setState({ selectedNodes: currentSelection });
       }
@@ -93,10 +156,10 @@ export default function CropImageNode({ id, data, selected = false }: CropImageN
           </div>
         )}
 
-        {renderInput("x%", "xPercent", data.xPercent ?? 0, "x_percent")}
-        {renderInput("y%", "yPercent", data.yPercent ?? 0, "y_percent")}
-        {renderInput("width%", "widthPercent", data.widthPercent ?? 100, "width_percent")}
-        {renderInput("height%", "heightPercent", data.heightPercent ?? 100, "height_percent")}
+        {renderInput("x%", "xPercent", "x_percent")}
+        {renderInput("y%", "yPercent", "y_percent")}
+        {renderInput("width%", "widthPercent", "width_percent")}
+        {renderInput("height%", "heightPercent", "height_percent")}
 
         {hasConnectedImageInput && (
           <button
@@ -121,8 +184,10 @@ export default function CropImageNode({ id, data, selected = false }: CropImageN
         )}
 
         {data.outputUrl && (
-          <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-100">
-            Cropped output ready
+          <div className="space-y-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-2 text-[11px] text-[var(--text-primary)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.outputUrl} alt="Cropped output preview" className="h-28 w-full rounded object-cover" />
+            <div>Cropped output ready</div>
           </div>
         )}
       </div>

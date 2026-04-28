@@ -98,11 +98,13 @@ async function callGemini(payload: LlmTaskPayload): Promise<string> {
   }
 
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({ model: payload.model });
+  const model = client.getGenerativeModel({
+    model: payload.model,
+    ...(payload.systemPrompt ? { systemInstruction: payload.systemPrompt } : {})
+  });
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
-  if (payload.systemPrompt) parts.push({ text: payload.systemPrompt });
   if (payload.userMessage) parts.push({ text: payload.userMessage });
 
   for (const imageUrl of payload.images) {
@@ -117,6 +119,9 @@ async function callGemini(payload: LlmTaskPayload): Promise<string> {
       // skip images that cannot be fetched — text parts still run
     }
   }
+
+  // Gemini requires at least one user part
+  if (parts.length === 0) parts.push({ text: payload.systemPrompt });
 
   const response = await model.generateContent({ contents: [{ role: "user", parts }] });
   const output = response.response.text();

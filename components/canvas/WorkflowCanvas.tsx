@@ -141,6 +141,19 @@ const CORE_PLUS_ITEMS = [
   { id: "get-video-frame", label: "Video Frame" }
 ] as const;
 
+const EDITOR_NODE_RAIL_ITEMS: Array<{
+  type: FlowNodeType;
+  label: string;
+  icon: typeof Type;
+}> = [
+  { type: "text", label: "Text", icon: Type },
+  { type: "upload-image", label: "Upload Image", icon: ImagePlus },
+  { type: "upload-video", label: "Upload Video", icon: Video },
+  { type: "llm", label: "LLM", icon: Sparkles },
+  { type: "crop-image", label: "Crop Image", icon: Scissors },
+  { type: "extract-frame", label: "Extract Frame", icon: Workflow }
+] as const;
+
 const SCISSOR_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='6' cy='6' r='3'/%3E%3Ccircle cx='6' cy='18' r='3'/%3E%3Cpath d='M20 4 8.12 15.88'/%3E%3Cpath d='M14.47 14.48 20 20'/%3E%3Cpath d='M8.12 8.12 12 12'/%3E%3C/svg%3E") 6 6, crosshair`;
 
 type RightPanelMode = "assets" | "history" | null;
@@ -207,6 +220,85 @@ function extractWorkflowAssets(nodes: Node<NodeData>[]): WorkflowAsset[] {
 
     return [];
   });
+}
+
+function EditorNodeRail({
+  theme,
+  collapsed,
+  onToggleCollapsed,
+  onAddNode,
+  onDragNode
+}: {
+  theme: "dark" | "light";
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  onAddNode: (type: FlowNodeType) => void;
+  onDragNode: (event: DragEvent<HTMLButtonElement>, type: FlowNodeType) => void;
+}) {
+  return (
+    <Panel position="top-left" className="!left-5 !top-28 !m-0">
+      <aside
+        className={`rounded-[20px] border p-2.5 shadow-[0_20px_45px_rgba(0,0,0,0.14)] backdrop-blur transition-[width] duration-200 ${
+          theme === "dark"
+            ? "border-white/10 bg-[rgba(20,20,22,0.92)]"
+            : "border-black/8 bg-[rgba(255,255,255,0.94)]"
+        } ${collapsed ? "w-[58px]" : "w-[172px]"}`}
+      >
+        <div className={`mb-2 flex items-center ${collapsed ? "justify-center" : "justify-between gap-2 px-1"}`}>
+          {collapsed ? null : (
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
+              Nodes
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border transition ${
+              theme === "dark"
+                ? "border-white/10 bg-white/[0.04] text-white/72 hover:bg-white/[0.08] hover:text-white"
+                : "border-black/8 bg-black/[0.03] text-black/58 hover:bg-black/[0.06] hover:text-black/80"
+            }`}
+            aria-label={collapsed ? "Expand node rail" : "Collapse node rail"}
+            title={collapsed ? "Expand" : "Collapse"}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <div className="space-y-1.5">
+          {EDITOR_NODE_RAIL_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.type}
+                type="button"
+                draggable
+                onDragStart={(event) => onDragNode(event, item.type)}
+                onClick={() => onAddNode(item.type)}
+                className={`flex w-full cursor-grab items-center rounded-[14px] py-2 text-left transition active:cursor-grabbing ${
+                  theme === "dark"
+                    ? "text-white/88 hover:bg-white/6"
+                    : "text-black/78 hover:bg-black/5"
+                } ${collapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
+                title={`Drag or click to add ${item.label}`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] border ${
+                    theme === "dark"
+                      ? "border-white/10 bg-white/[0.06] text-white/80"
+                      : "border-black/8 bg-black/[0.04] text-black/72"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                {collapsed ? null : <span className="truncate text-[13px] font-medium">{item.label}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+    </Panel>
+  );
 }
 
 function HistoryPreview({
@@ -1059,6 +1151,7 @@ function WorkflowCanvasInner({ workflowId, workflowName, initialNodes, initialEd
     if (typeof window === "undefined") return "dark";
     return window.localStorage.getItem("nextflow-theme") === "light" ? "light" : "dark";
   });
+  const [isNodeRailCollapsed, setIsNodeRailCollapsed] = useState(false);
   const [pendingNodePosition, setPendingNodePosition] = useState<XYPosition | null>(null);
   const [isNodeMenuOpen, setIsNodeMenuOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -1313,6 +1406,11 @@ function WorkflowCanvasInner({ workflowId, workflowName, initialNodes, initialEd
     [addNodeAtPosition, reactFlow]
   );
 
+  const handleNodeRailDragStart = useCallback((event: DragEvent<HTMLButtonElement>, type: FlowNodeType) => {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("application/json", JSON.stringify({ type }));
+  }, []);
+
   const onConnect = useCallback(
     (connection: Connection) => {
       const state = useWorkflowStore.getState();
@@ -1471,6 +1569,14 @@ function WorkflowCanvasInner({ workflowId, workflowName, initialNodes, initialEd
           panOnScroll
           panOnDrag={tool === "hand" ? [0, 1] : false}
         >
+          <EditorNodeRail
+            theme={theme}
+            collapsed={isNodeRailCollapsed}
+            onToggleCollapsed={() => setIsNodeRailCollapsed((current) => !current)}
+            onAddNode={addNodeAtViewportCenter}
+            onDragNode={handleNodeRailDragStart}
+          />
+
           <Background color={theme === "dark" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.18)"} gap={42} size={2.1} variant={BackgroundVariant.Dots} />
 
           <CanvasShell

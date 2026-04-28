@@ -1,7 +1,7 @@
 import { defineConfig } from "@trigger.dev/sdk/v3";
 
 export default defineConfig({
-  project: "proj_cpegbiaxzkcqsfpvcykh",
+  project: "proj_cpegbiaxzkcqsfypcykh",
   dirs: ["./trigger/tasks"],
   maxDuration: 300,
   retries: {

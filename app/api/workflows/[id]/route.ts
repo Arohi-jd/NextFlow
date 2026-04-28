@@ -190,8 +190,30 @@ export async function DELETE(_: Request, context: { params: { id: string } }): P
     const result = await getOwnedWorkflowOrError(context.params.id, user.id);
     if (result.error) return result.error;
 
-    await prisma.workflow.delete({
-      where: { id: result.workflow.id }
+    const runIds = result.workflow.runs.map((run) => run.id);
+
+    await prisma.$transaction(async (tx) => {
+      if (runIds.length > 0) {
+        await tx.nodeExecution.deleteMany({
+          where: {
+            runId: {
+              in: runIds
+            }
+          }
+        });
+
+        await tx.workflowRun.deleteMany({
+          where: {
+            id: {
+              in: runIds
+            }
+          }
+        });
+      }
+
+      await tx.workflow.delete({
+        where: { id: result.workflow.id }
+      });
     });
 
     return NextResponse.json({ success: true });

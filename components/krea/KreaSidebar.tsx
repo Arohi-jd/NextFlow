@@ -137,6 +137,7 @@ function WorkflowSidebarSection() {
       }
     } catch (error) {
       console.error("Failed to delete workflow:", error);
+      window.alert("Could not delete this workflow. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -188,6 +189,7 @@ function WorkflowSidebarSection() {
                 <div className="hidden items-center gap-1 group-hover:flex">
                   <button
                     type="button"
+                    onMouseDown={(event) => event.stopPropagation()}
                     onClick={() => void duplicateWorkflow(workflow.id)}
                     disabled={busyId === workflow.id}
                     className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
@@ -197,6 +199,7 @@ function WorkflowSidebarSection() {
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(event) => event.stopPropagation()}
                     onClick={() => void deleteWorkflow(workflow.id)}
                     disabled={busyId === workflow.id}
                     className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-red-400 disabled:opacity-50"

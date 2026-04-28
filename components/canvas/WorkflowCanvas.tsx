@@ -736,6 +736,7 @@ function CanvasShell({
 }) {
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const setWorkflowName = useWorkflowStore((state) => state.setWorkflowName);
+  const saveNow = useWorkflowStore((state) => state.saveNow);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -777,6 +778,7 @@ function CanvasShell({
                   const nextName = draftWorkflowName.trim() || "Untitled Workflow";
                   if (nextName !== workflowName) {
                     setWorkflowName(nextName);
+                    void saveNow();
                   }
                   setIsEditingName(false);
                 }}

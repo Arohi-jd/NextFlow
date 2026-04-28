@@ -14,9 +14,11 @@ import { useRouter } from "next/navigation";
 import "@xyflow/react/dist/style.css";
 import {
   Clock3,
+  Check,
   ChevronLeft,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Diamond,
   Hand,
   Image as ImageIcon,
@@ -38,7 +40,9 @@ import {
   Upload,
   Video,
   Workflow,
-  X
+  X,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { KreaExpandedSidebar } from "@/components/krea/KreaSidebar";
 import { nodeTypes } from "@/components/nodes/nodeTypes";
@@ -392,6 +396,11 @@ function WorkflowUtilityPanel({
   edges: Edge[];
   runs: import("@/lib/types").WorkflowRun[];
 }) {
+  const refreshHistory = useWorkflowStore((state) => state.refreshHistory);
+  const [expandedRuns, setExpandedRuns] = useState<string[]>([]);
+  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   if (!mode) return null;
 
   if (mode === "assets") {
@@ -421,38 +430,172 @@ function WorkflowUtilityPanel({
     );
   }
 
-  const historyCards = [
-    {
-      id: "current",
-      label: "Current",
-      timestampLabel: "Current",
-      isCurrent: true,
-      nodes,
-      edges
-    },
-    ...runs.map((run) => ({
-      id: run.id,
-      label: formatRelativeTime(run.startedAt),
-      timestampLabel: formatRelativeTime(run.startedAt),
-      isCurrent: false,
-      nodes,
-      edges
-    }))
-  ];
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshHistory();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
-    <aside className="w-[480px] shrink-0 border-l border-[var(--border-color)] bg-[var(--bg-secondary)]">
-      <div className="h-full overflow-y-auto px-6 py-4">
-        <div className="space-y-6">
-          {historyCards.map((card) => (
-            <HistoryPreview
-              key={card.id}
-              nodes={card.nodes}
-              edges={card.edges}
-              label={card.isCurrent ? "Just now" : card.timestampLabel}
-              isCurrent={card.isCurrent}
-            />
-          ))}
+    <aside className="w-[320px] shrink-0 border-l border-[var(--border-color)] bg-[var(--bg-secondary)]">
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] px-4 py-4">
+          <Clock3 className="h-4 w-4 text-[var(--text-secondary)]" />
+          <h2 className="flex-1 text-[15px] font-medium tracking-[-0.03em] text-[var(--text-primary)]">Workflow History</h2>
+          <button
+            type="button"
+            onClick={() => void handleRefresh()}
+            className="flex h-7 w-7 items-center justify-center rounded-[8px] text-[var(--text-secondary)] transition hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]"
+            aria-label="Refresh history"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          {runs.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center">
+              <Clock3 className="h-8 w-8 text-[var(--text-muted)]" />
+              <p className="text-[15px] tracking-[-0.03em] text-[var(--text-secondary)]">No runs yet</p>
+              <p className="text-[13px] text-[var(--text-muted)]">Run the workflow to see history</p>
+            </div>
+          ) : (
+            runs.map((run, index) => {
+              const runExpanded = expandedRuns.includes(run.id);
+              const durationSeconds = run.durationSeconds ?? run.duration ?? 0;
+              const runStatus =
+                run.status === "success" || run.status === "failed" || run.status === "running"
+                  ? run.status
+                  : "pending";
+
+              return (
+                <div
+                  key={run.id}
+                  className="mb-2 overflow-hidden rounded-[14px] border border-[var(--border-color)] bg-[var(--bg-tertiary)]"
+                  style={{ opacity: 1 - Math.min(index, 6) * 0.02 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedRuns((current) =>
+                        current.includes(run.id) ? current.filter((id) => id !== run.id) : [...current, run.id]
+                      )
+                    }
+                    className="flex w-full items-start gap-3 px-3.5 py-3 text-left transition hover:brightness-[1.03]"
+                  >
+                    <span
+                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                        runStatus === "success"
+                          ? "bg-emerald-400"
+                          : runStatus === "failed"
+                            ? "bg-red-400"
+                            : runStatus === "running"
+                              ? "bg-amber-400"
+                              : "bg-zinc-400"
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-medium tracking-[-0.03em] text-[var(--text-primary)]">
+                          Run #{run.runNumber ?? index + 1}
+                        </span>
+                        <span className="rounded-full border border-[var(--border-color)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+                          {run.status}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+                        {new Date(run.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {" · "}
+                        {durationSeconds.toFixed(1)}s
+                        {" · "}
+                        {run.scope}
+                      </div>
+                    </div>
+                    {runExpanded ? (
+                      <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                    ) : (
+                      <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                    )}
+                  </button>
+
+                  {runExpanded ? (
+                    <div className="border-t border-[var(--border-color)]">
+                      <div className="space-y-1 px-3 py-2.5">
+                        {run.executions.map((execution) => {
+                          const execExpanded = expandedNodes.includes(execution.id);
+                          const nodeStatus =
+                            execution.status === "success" || execution.status === "failed" || execution.status === "running"
+                              ? execution.status
+                              : "pending";
+                          const executionName =
+                            execution.nodeName ||
+                            nodes.find((node) => node.id === execution.nodeId)?.data.label ||
+                            execution.nodeId;
+
+                          return (
+                            <div
+                              key={execution.id}
+                              className="overflow-hidden rounded-[10px] border border-[var(--border-color)] bg-[color:color-mix(in_srgb,var(--bg-primary)_35%,transparent)]"
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedNodes((current) =>
+                                    current.includes(execution.id)
+                                      ? current.filter((id) => id !== execution.id)
+                                      : [...current, execution.id]
+                                  )
+                                }
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:brightness-[1.04]"
+                              >
+                                {nodeStatus === "success" ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : nodeStatus === "failed" ? (
+                                  <X className="h-3.5 w-3.5 text-red-400" />
+                                ) : nodeStatus === "running" ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-300" />
+                                ) : (
+                                  <Clock3 className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                                )}
+                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium tracking-[-0.02em] text-[var(--text-primary)]">
+                                  {executionName}
+                                </span>
+                                <span className="shrink-0 text-[11px] text-[var(--text-muted)]">
+                                  {((execution.executionTime ?? 0) / 1000).toFixed(1)}s
+                                </span>
+                                {execExpanded ? (
+                                  <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+                                ) : (
+                                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+                                )}
+                              </button>
+
+                              {execExpanded ? (
+                                <div className="border-t border-[var(--border-color)] px-3 py-2 text-[12px] leading-5 text-[var(--text-secondary)]">
+                                  <div className="mb-1.5 font-medium text-[var(--text-primary)]">{execution.nodeType}</div>
+                                  {execution.error ? <div className="mb-1.5 text-red-400">{execution.error}</div> : null}
+                                  {execution.outputs ? (
+                                    <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-[8px] bg-[var(--bg-secondary)] p-2 text-[11px] text-[var(--text-muted)]">
+                                      {JSON.stringify(execution.outputs, null, 2)}
+                                    </pre>
+                                  ) : (
+                                    <div className="text-[var(--text-muted)]">No output recorded</div>
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </aside>
@@ -1036,7 +1179,7 @@ function CanvasShell({
                 }`}
               >
                 <Clock3 className="h-6 w-6 text-[var(--text-secondary)]" />
-                <span className="flex-1 text-[16px] font-medium text-[var(--text-primary)]">Version History</span>
+                <span className="flex-1 text-[16px] font-medium text-[var(--text-primary)]">Workflow History</span>
                 <span className="text-[14px] text-[var(--text-secondary)]">⌥ ⌘ S</span>
               </button>
             </div>

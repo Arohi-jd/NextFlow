@@ -28,9 +28,10 @@ export interface NodeData {
   model?: "gemini-2.0-flash" | "llama-3.3-70b-versatile" | "llama-3.1-8b-instant" | "meta-llama/llama-4-scout-17b-16e-instruct";
   imageUrl?: string;
   videoUrl?: string;
+  fileUrl?: string;
   output?: string;
   outputUrl?: string;
-  error?: string;
+  error?: string | null;
   status?: RunStatus;
   timestamp?: string;
   xPercent?: number;
@@ -47,26 +48,39 @@ export interface NodeData {
 export interface NodeExecution {
   id: string;
   nodeId: string;
-  nodeName: string;
-  nodeType: NodeType;
+  nodeName?: string;
+  nodeType: NodeType | string;
   status: RunStatus;
-  inputs?: Record<string, unknown>;
-  outputs?: Record<string, unknown>;
-  executionTime: number;
-  error?: string;
+  inputs?: Record<string, unknown> | null;
+  outputs?: Record<string, unknown> | null;
+  executionTime?: number | null;
+  error?: string | null;
+  startedAt?: string;
+  completedAt?: string | null;
 }
 
 export interface WorkflowRun {
   id: string;
   workflowId: string;
-  runNumber: number;
-  scope: RunScope;
+  runNumber?: number;
+  scope: RunScope | string;
   status: RunStatus;
   startedAt: string;
-  completedAt?: string;
-  durationSeconds: number;
+  completedAt?: string | null;
+  duration?: number | null;
+  durationSeconds?: number;
   executions: NodeExecution[];
 }
+
+export type WorkflowListItem = {
+  id: string;
+  name: string;
+  nodeCount: number;
+  updatedAt: string;
+  lastOpenedAt?: string | null;
+  lastRunStatus?: string | null;
+  lastRunDate?: string | null;
+};
 
 export const CONNECTION_VALIDATION_MAP: Record<HandleKind, HandleKind[]> = {
   text: ["text"],

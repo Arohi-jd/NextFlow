@@ -8,7 +8,7 @@ export function useKeyboardShortcuts(): void {
   const removeSelectedNodes = useWorkflowStore((state) => state.removeSelectedNodes);
   const selectAllNodes = useWorkflowStore((state) => state.selectAllNodes);
   const clearSelection = useWorkflowStore((state) => state.clearSelection);
-  const saveWorkflow = useWorkflowStore((state) => state.saveWorkflow);
+  const saveNow = useWorkflowStore((state) => state.saveNow);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
   const duplicateSelectedNodes = useWorkflowStore((state) => state.duplicateSelectedNodes);
@@ -33,7 +33,7 @@ export function useKeyboardShortcuts(): void {
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void saveWorkflow();
+        void saveNow();
       }
 
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
@@ -87,5 +87,5 @@ export function useKeyboardShortcuts(): void {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [clearSelection, redo, removeSelectedNodes, saveWorkflow, selectAllNodes, undo, duplicateSelectedNodes, fitView]);
+  }, [clearSelection, redo, removeSelectedNodes, saveNow, selectAllNodes, undo, duplicateSelectedNodes, fitView]);
 }

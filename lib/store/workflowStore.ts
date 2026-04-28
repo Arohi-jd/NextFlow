@@ -10,17 +10,17 @@ import {
   type XYPosition
 } from "@xyflow/react";
 import { create } from "zustand";
-import { applySampleMediaDefaults, createSampleWorkflow } from "@/lib/utils/sampleWorkflow";
-import { sanitizeNodesForTransport } from "@/lib/utils/persistence";
 import type { FlowNodeType, NodeData, NodeType, RunScope, WorkflowRun } from "@/lib/types";
+import { sanitizeNodesForTransport } from "@/lib/utils/persistence";
 
 export type { NodeData } from "@/lib/types";
 
-type WorkflowSnapshot = {
+type HistorySnapshot = {
   nodes: Node<NodeData>[];
   edges: Edge[];
-  workflowName: string;
 };
+
+type SaveStatus = "saved" | "saving" | "error";
 
 interface WorkflowStoreState {
   nodes: Node<NodeData>[];
@@ -30,38 +30,49 @@ interface WorkflowStoreState {
   runs: WorkflowRun[];
   isRunning: boolean;
   runningNodes: Set<string>;
+  saveStatus: SaveStatus;
+  lastSavedAt: Date | null;
+  history: HistorySnapshot[];
+  historyIndex: number;
   selectedNodes: string[];
-  isLoaded: boolean;
-  saveState: "idle" | "saving" | "saved" | "error";
-  lastSavedAt: string | null;
-  lastSavedPayload: string | null;
-  past: WorkflowSnapshot[];
-  future: WorkflowSnapshot[];
 }
 
 interface WorkflowStoreActions {
-  loadWorkflow: (id: string) => Promise<void>;
-  saveWorkflow: () => Promise<void>;
-  setWorkflowName: (name: string, options?: { recordHistory?: boolean }) => void;
+  initWorkflow: (id: string, name: string, nodes: Node<NodeData>[], edges: Edge[], runs: WorkflowRun[]) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
+  onConnect: (connection: Connection) => void;
   addNode: (type: FlowNodeType, position: XYPosition) => void;
-  updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
+  updateNodeData: (nodeId: string, partialData: Partial<NodeData>) => void;
+  setWorkflowName: (name: string) => void;
+  setRunningNode: (nodeId: string, isRunning: boolean) => void;
+  addRun: (run: WorkflowRun) => void;
+  updateRun: (runId: string, updates: Partial<WorkflowRun>) => void;
+  triggerSave: () => void;
+  saveNow: () => Promise<void>;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  pushHistory: (nodes: Node<NodeData>[], edges: Edge[]) => void;
+  clearCanvas: () => void;
+  removeEdge: (edgeId: string) => void;
   removeNode: (nodeId: string) => void;
   removeSelectedNodes: () => void;
   duplicateSelectedNodes: () => void;
-  onNodesChange: (changes: NodeChange[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  connectNodes: (connection: Connection) => void;
   clearSelection: () => void;
   selectAllNodes: () => void;
+  setNodes: (nodes: Node<NodeData>[]) => void;
+  setEdges: (edges: Edge[]) => void;
   importWorkflow: (payload: { name?: string; nodes: Node<NodeData>[]; edges: Edge[] }) => void;
-  loadSampleWorkflow: () => void;
   refreshHistory: () => Promise<void>;
   executeWorkflow: (scope: RunScope) => Promise<WorkflowRun>;
-  undo: () => void;
-  redo: () => void;
 }
 
 type WorkflowStore = WorkflowStoreState & WorkflowStoreActions;
+
+const MAX_HISTORY = 50;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const flowTypeToEnum: Record<FlowNodeType, NodeType> = {
   text: "TEXT" as NodeType,
@@ -74,9 +85,9 @@ const flowTypeToEnum: Record<FlowNodeType, NodeType> = {
 
 const flowTypeToLabel: Record<FlowNodeType, string> = {
   text: "Text",
-  "upload-image": "Upload Image",
-  "upload-video": "Upload Video",
-  llm: "Run LLM",
+  "upload-image": "Image",
+  "upload-video": "Video",
+  llm: "LLM",
   "crop-image": "Crop Image",
   "extract-frame": "Extract Frame"
 };
@@ -88,7 +99,8 @@ function createNode(type: FlowNodeType, position: XYPosition): Node<NodeData> {
     label: flowTypeToLabel[type],
     type,
     nodeType: flowTypeToEnum[type],
-    status: "pending"
+    status: "pending",
+    error: null
   };
 
   if (type === "text") baseData.text = "";
@@ -109,69 +121,19 @@ function createNode(type: FlowNodeType, position: XYPosition): Node<NodeData> {
   };
 }
 
-function cloneSnapshot(state: WorkflowStoreState): WorkflowSnapshot {
-  return {
-    nodes: structuredClone(state.nodes),
-    edges: structuredClone(state.edges),
-    workflowName: state.workflowName
-  };
-}
-
-function snapshotFromValues(nodes: Node<NodeData>[], edges: Edge[], workflowName: string): WorkflowSnapshot {
-  return {
-    nodes: structuredClone(nodes),
-    edges: structuredClone(edges),
-    workflowName
-  };
-}
-
 function sanitizeNodes(nodes: Node<NodeData>[]): Node<NodeData>[] {
   return sanitizeNodesForTransport(nodes);
 }
 
-function hydrateNodeOutputs(nodes: Node<NodeData>[], run: WorkflowRun): Node<NodeData>[] {
-  const executionByNodeId = new Map(run.executions.map((execution) => [execution.nodeId, execution]));
-
-  return nodes.map((node) => {
-    const execution = executionByNodeId.get(node.id);
-    if (!execution) return { ...node, data: { ...node.data, status: undefined, error: undefined } };
-
-    const outputs = execution.outputs ?? {};
-
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        status: execution.status,
-        error: execution.error,
-        output: typeof outputs.output === "string" ? outputs.output : node.data.output,
-        outputUrl: typeof outputs.outputUrl === "string" ? outputs.outputUrl : node.data.outputUrl,
-        imageUrl: typeof outputs.outputUrl === "string" && node.type !== "upload-image" ? outputs.outputUrl : node.data.imageUrl,
-        videoUrl: typeof outputs.outputUrl === "string" && node.type !== "upload-video" ? outputs.outputUrl : node.data.videoUrl
-      }
-    };
-  });
+function cloneSnapshot(nodes: Node<NodeData>[], edges: Edge[]): HistorySnapshot {
+  return {
+    nodes: structuredClone(nodes),
+    edges: structuredClone(edges)
+  };
 }
 
-async function fetchWorkflow(workflowId: string): Promise<{
-  id: string;
-  name: string;
-  nodes: Node<NodeData>[];
-  edges: Edge[];
-  runs: WorkflowRun[];
-}> {
-  const response = await fetch(`/api/workflows/${workflowId}`);
-
-  if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
-      window.location.assign("/sign-in");
-    }
-
-    const details = await response.text().catch(() => "");
-    throw new Error(`Failed to load workflow (${response.status}): ${details || response.statusText || "Unknown error"}`);
-  }
-
-  return response.json();
+function isMeaningfulNodeChange(changes: NodeChange[]): boolean {
+  return changes.some((change) => change.type !== "select");
 }
 
 export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
@@ -182,118 +144,282 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   runs: [],
   isRunning: false,
   runningNodes: new Set<string>(),
-  selectedNodes: [],
-  isLoaded: false,
-  saveState: "idle",
+  saveStatus: "saved",
   lastSavedAt: null,
-  lastSavedPayload: null,
-  past: [],
-  future: [],
+  history: [],
+  historyIndex: 0,
+  selectedNodes: [],
 
-  async loadWorkflow(id) {
-    const payload = await fetchWorkflow(id);
-    const hydratedNodes = applySampleMediaDefaults(payload.name, payload.nodes);
-    set({
-      workflowId: payload.id,
-      workflowName: payload.name,
-      nodes: hydratedNodes,
-      edges: payload.edges,
-      runs: payload.runs,
-      isLoaded: true,
-      lastSavedPayload: JSON.stringify({
-        name: payload.name,
-        nodes: sanitizeNodes(hydratedNodes),
-        edges: payload.edges
-      }),
-      past: [],
-      future: [],
-      selectedNodes: [],
-      runningNodes: new Set<string>()
-    });
-  },
-
-  async refreshHistory() {
-    const workflowId = get().workflowId;
-    if (!workflowId) return;
-    const payload = await fetchWorkflow(workflowId);
-    set({
-      runs: payload.runs
-    });
-  },
-
-  async saveWorkflow() {
-    const state = get();
-    const payloadSignature = JSON.stringify({
-      name: state.workflowName,
-      nodes: sanitizeNodes(state.nodes),
-      edges: state.edges
-    });
-
-    if (state.lastSavedPayload === payloadSignature || state.saveState === "saving") {
-      return;
-    }
-
-    set({ saveState: "saving" });
-
-    const response = await fetch("/api/workflows", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: state.workflowId ?? undefined,
-        name: state.workflowName,
-        nodes: sanitizeNodes(state.nodes),
-        edges: state.edges
-      })
-    });
-
-    if (!response.ok) {
-      set({ saveState: "error" });
-      const details = await response.text();
-      throw new Error(`Failed to save workflow: ${details}`);
-    }
-
-    const payload: { workflow: { id: string } } = await response.json();
-    set({
-      workflowId: payload.workflow.id,
-      saveState: "saved",
-      lastSavedAt: new Date().toISOString(),
-      lastSavedPayload: payloadSignature
-    });
-  },
-
-  setWorkflowName(name, options) {
-    set((state) => ({
-      workflowName: name,
-      lastSavedPayload: options?.recordHistory === false ? state.lastSavedPayload : null,
-      past: options?.recordHistory === false ? state.past : [...state.past, cloneSnapshot(state)].slice(-100),
-      future: options?.recordHistory === false ? state.future : []
+  initWorkflow(id, name, nodes, edges, runs) {
+    const sanitizedNodes = sanitizeNodes(nodes).map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        status: undefined,
+        error: null
+      }
     }));
+
+    set({
+      workflowId: id,
+      workflowName: name,
+      nodes: sanitizedNodes,
+      edges: structuredClone(edges),
+      runs,
+      isRunning: false,
+      runningNodes: new Set<string>(),
+      saveStatus: "saved",
+      lastSavedAt: null,
+      history: [cloneSnapshot(sanitizedNodes, edges)],
+      historyIndex: 0,
+      selectedNodes: []
+    });
+  },
+
+  onNodesChange(changes) {
+    const currentEdges = get().edges;
+    set((state) => {
+      const nextNodes = applyNodeChanges(changes, state.nodes) as Node<NodeData>[];
+
+      if (state.nodes.length > 0 && nextNodes.length === 0) {
+        return state;
+      }
+
+      return {
+        nodes: nextNodes,
+        selectedNodes: nextNodes.filter((node) => node.selected).map((node) => node.id)
+      };
+    });
+
+    if (isMeaningfulNodeChange(changes)) {
+      get().pushHistory(get().nodes, currentEdges);
+      get().triggerSave();
+    }
+  },
+
+  onEdgesChange(changes) {
+    set((state) => ({
+      edges: applyEdgeChanges(changes, state.edges)
+    }));
+
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
+  },
+
+  onConnect(connection) {
+    set((state) => ({
+      edges: addReactFlowEdge(
+        {
+          ...connection,
+          id: `${connection.source}-${connection.target}-${crypto.randomUUID()}`,
+          animated: true,
+          type: "smoothstep",
+          style: {
+            stroke: "#7c3aed",
+            strokeWidth: 2
+          }
+        },
+        state.edges
+      )
+    }));
+
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
   },
 
   addNode(type, position) {
     set((state) => ({
-      nodes: [...state.nodes, createNode(type, position)],
-      lastSavedPayload: null,
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: []
+      nodes: [...state.nodes, createNode(type, position)]
+    }));
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
+  },
+
+  updateNodeData(nodeId, partialData) {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                ...partialData
+              }
+            }
+          : node
+      )
+    }));
+    get().triggerSave();
+  },
+
+  setWorkflowName(name) {
+    set({ workflowName: name });
+    get().triggerSave();
+  },
+
+  setRunningNode(nodeId, isRunning) {
+    set((state) => {
+      const next = new Set(state.runningNodes);
+      if (isRunning) next.add(nodeId);
+      else next.delete(nodeId);
+
+      return {
+        runningNodes: next,
+        isRunning: next.size > 0
+      };
+    });
+  },
+
+  addRun(run) {
+    set((state) => ({
+      runs: [run, ...state.runs].slice(0, 100)
     }));
   },
 
-  updateNodeData(nodeId, data) {
+  updateRun(runId, updates) {
     set((state) => ({
-      nodes: state.nodes.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node)),
-      lastSavedPayload: null
+      runs: state.runs.map((run) => (run.id === runId ? { ...run, ...updates } : run))
     }));
+  },
+
+  triggerSave() {
+    set({ saveStatus: "saving" });
+
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+    }
+
+    saveTimer = setTimeout(() => {
+      void get().saveNow();
+    }, 1000);
+  },
+
+  async saveNow() {
+    const state = get();
+    if (!state.workflowId) return;
+
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+
+    set({ saveStatus: "saving" });
+
+    try {
+      const response = await fetch(`/api/workflows/${state.workflowId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: state.workflowName,
+          nodes: sanitizeNodes(state.nodes),
+          edges: state.edges
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Save failed with status ${response.status}`);
+      }
+
+      await response.json();
+      set({
+        saveStatus: "saved",
+        lastSavedAt: new Date()
+      });
+    } catch (error) {
+      console.error("Workflow save failed:", error);
+      set({ saveStatus: "error" });
+    }
+  },
+
+  undo() {
+    const state = get();
+    if (state.historyIndex <= 0) return;
+
+    const nextIndex = state.historyIndex - 1;
+    const snapshot = state.history[nextIndex];
+    if (!snapshot) return;
+
+    set({
+      nodes: structuredClone(snapshot.nodes),
+      edges: structuredClone(snapshot.edges),
+      historyIndex: nextIndex,
+      selectedNodes: []
+    });
+    get().triggerSave();
+  },
+
+  redo() {
+    const state = get();
+    if (state.historyIndex >= state.history.length - 1) return;
+
+    const nextIndex = state.historyIndex + 1;
+    const snapshot = state.history[nextIndex];
+    if (!snapshot) return;
+
+    set({
+      nodes: structuredClone(snapshot.nodes),
+      edges: structuredClone(snapshot.edges),
+      historyIndex: nextIndex,
+      selectedNodes: []
+    });
+    get().triggerSave();
+  },
+
+  canUndo() {
+    return get().historyIndex > 0;
+  },
+
+  canRedo() {
+    const state = get();
+    return state.historyIndex < state.history.length - 1;
+  },
+
+  pushHistory(nodes, edges) {
+    set((state) => {
+      const trimmed = state.history.slice(0, state.historyIndex + 1);
+      const snapshot = cloneSnapshot(nodes, edges);
+      const previous = trimmed.at(-1);
+
+      if (previous && JSON.stringify(previous) === JSON.stringify(snapshot)) {
+        return state;
+      }
+
+      const nextHistory = [...trimmed, snapshot].slice(-MAX_HISTORY);
+
+      return {
+        history: nextHistory,
+        historyIndex: nextHistory.length - 1
+      };
+    });
+  },
+
+  clearCanvas() {
+    set({
+      nodes: [],
+      edges: [],
+      history: [cloneSnapshot([], [])],
+      historyIndex: 0,
+      selectedNodes: []
+    });
+    get().triggerSave();
+  },
+
+  removeEdge(edgeId) {
+    set((state) => ({
+      edges: state.edges.filter((edge) => edge.id !== edgeId)
+    }));
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
   },
 
   removeNode(nodeId) {
     set((state) => ({
       nodes: state.nodes.filter((node) => node.id !== nodeId),
       edges: state.edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
-      lastSavedPayload: null,
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: []
+      selectedNodes: state.selectedNodes.filter((id) => id !== nodeId)
     }));
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
   },
 
   removeSelectedNodes() {
@@ -303,11 +429,10 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     set((state) => ({
       nodes: state.nodes.filter((node) => !selected.has(node.id)),
       edges: state.edges.filter((edge) => !selected.has(edge.source) && !selected.has(edge.target)),
-      selectedNodes: [],
-      lastSavedPayload: null,
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: []
+      selectedNodes: []
     }));
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
   },
 
   duplicateSelectedNodes() {
@@ -316,14 +441,11 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
 
     set((state) => {
       const selectedNodes = state.nodes.filter((node) => selected.has(node.id));
-      const selectedEdges = state.edges.filter(
-        (edge) => selected.has(edge.source) && selected.has(edge.target)
-      );
-
-      // Create ID mapping from old to new
+      const selectedEdges = state.edges.filter((edge) => selected.has(edge.source) && selected.has(edge.target));
       const idMap = new Map<string, string>();
+
       const duplicatedNodes = selectedNodes.map((node) => {
-        const newId = `${node.id.split("-")[0]}-${Math.random().toString(36).slice(2, 9)}`;
+        const newId = `${node.id.split("-")[0]}-${crypto.randomUUID()}`;
         idMap.set(node.id, newId);
         return {
           ...structuredClone(node),
@@ -336,65 +458,22 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         };
       });
 
-      // Remap edges to use new node IDs
       const duplicatedEdges = selectedEdges.map((edge) => ({
         ...structuredClone(edge),
-        id: `${idMap.get(edge.source)}-${idMap.get(edge.target)}`,
+        id: `${idMap.get(edge.source)}-${idMap.get(edge.target)}-${crypto.randomUUID()}`,
         source: idMap.get(edge.source) ?? edge.source,
         target: idMap.get(edge.target) ?? edge.target
       }));
 
-      const newSelectedIds = Array.from(idMap.values());
-
       return {
         nodes: [...state.nodes, ...duplicatedNodes],
         edges: [...state.edges, ...duplicatedEdges],
-        selectedNodes: newSelectedIds,
-        lastSavedPayload: null,
-        past: [...state.past, cloneSnapshot(state)].slice(-100),
-        future: []
+        selectedNodes: duplicatedNodes.map((node) => node.id)
       };
     });
-  },
 
-  onNodesChange(changes) {
-    set((state) => {
-      const nextNodes = applyNodeChanges(changes, state.nodes) as Node<NodeData>[];
-      const structuralChange = changes.some((change) => change.type !== "select");
-
-      return {
-        nodes: nextNodes,
-        selectedNodes: nextNodes.filter((node) => node.selected).map((node) => node.id),
-        lastSavedPayload: structuralChange ? null : state.lastSavedPayload,
-        past: structuralChange ? [...state.past, cloneSnapshot(state)].slice(-100) : state.past,
-        future: structuralChange ? [] : state.future
-      };
-    });
-  },
-
-  onEdgesChange(changes) {
-    set((state) => ({
-      edges: applyEdgeChanges(changes, state.edges),
-      lastSavedPayload: changes.length > 0 ? null : state.lastSavedPayload,
-      past: changes.length > 0 ? [...state.past, cloneSnapshot(state)].slice(-100) : state.past,
-      future: changes.length > 0 ? [] : state.future
-    }));
-  },
-
-  connectNodes(connection) {
-    set((state) => ({
-      edges: addReactFlowEdge(
-        {
-          ...connection,
-          id: `${connection.source}-${connection.target}-${crypto.randomUUID()}`,
-          animated: true
-        },
-        state.edges
-      ),
-      lastSavedPayload: null,
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: []
-    }));
+    get().pushHistory(get().nodes, get().edges);
+    get().triggerSave();
   },
 
   clearSelection() {
@@ -411,40 +490,57 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     }));
   },
 
-  importWorkflow(payload) {
-    set((state) => ({
-      workflowName: payload.name || state.workflowName,
-      nodes: payload.nodes,
-      edges: payload.edges,
-      lastSavedPayload: null,
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: [],
-      selectedNodes: []
-    }));
+  setNodes(nodes) {
+    set({ nodes });
+    get().pushHistory(nodes, get().edges);
+    get().triggerSave();
   },
 
-  loadSampleWorkflow() {
-    const sample = createSampleWorkflow();
+  setEdges(edges) {
+    set({ edges });
+    get().pushHistory(get().nodes, edges);
+    get().triggerSave();
+  },
+
+  importWorkflow(payload) {
     set((state) => ({
-      workflowId: null,
-      workflowName: sample.name,
-      nodes: sample.nodes,
-      edges: sample.edges,
-      lastSavedPayload: null,
-      runs: [],
+      workflowName: payload.name ?? state.workflowName,
+      nodes: payload.nodes,
+      edges: payload.edges,
       selectedNodes: [],
-      runningNodes: new Set<string>(),
-      past: [...state.past, cloneSnapshot(state)].slice(-100),
-      future: []
+      history: [cloneSnapshot(payload.nodes, payload.edges)],
+      historyIndex: 0
     }));
+    get().triggerSave();
+  },
+
+  async refreshHistory() {
+    const workflowId = get().workflowId;
+    if (!workflowId) return;
+
+    const response = await fetch(`/api/workflows/${workflowId}`, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to refresh workflow history (${response.status})`);
+    }
+
+    const payload = (await response.json()) as { workflow: { runs?: WorkflowRun[] } };
+
+    set({
+      runs: Array.isArray(payload.workflow?.runs) ? payload.workflow.runs : []
+    });
   },
 
   async executeWorkflow(scope) {
     const state = get();
-
     if (!state.workflowId) {
-      await get().saveWorkflow();
+      throw new Error("Workflow must be created before execution.");
     }
+
+    await get().saveNow();
 
     const runScope: RunScope = scope === "Selected" && state.selectedNodes.length === 1 ? "Single" : scope;
     const activeNodeIds = runScope === "Full" ? state.nodes.map((node) => node.id) : [...state.selectedNodes];
@@ -457,7 +553,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         data: {
           ...node.data,
           status: "pending",
-          error: undefined
+          error: null
         }
       }))
     });
@@ -466,7 +562,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        workflowId: get().workflowId,
+        workflowId: state.workflowId,
         workflowName: get().workflowName,
         nodes: sanitizeNodes(get().nodes),
         edges: get().edges,
@@ -476,54 +572,70 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     });
 
     if (!response.ok) {
+      let errorMessage = "Failed to execute workflow";
+
+      try {
+        const payload = (await response.json()) as { error?: string; details?: string };
+        errorMessage = payload.details || payload.error || errorMessage;
+      } catch {
+        try {
+          const text = await response.text();
+          if (text) errorMessage = text;
+        } catch {
+          // ignore
+        }
+      }
+
       set({
         isRunning: false,
-        runningNodes: new Set<string>()
+        runningNodes: new Set<string>(),
+        nodes: get().nodes.map((node) =>
+          activeNodeIds.includes(node.id)
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: "failed",
+                  error: errorMessage
+                }
+              }
+            : node
+        )
       });
-      throw new Error("Failed to execute workflow");
+
+      throw new Error(errorMessage);
     }
 
-    const payload: { run: WorkflowRun } = await response.json();
+    const payload = (await response.json()) as { run: WorkflowRun };
+    const run = payload.run;
+    const executionByNodeId = new Map(run.executions.map((execution) => [execution.nodeId, execution]));
 
     set((current) => ({
       isRunning: false,
       runningNodes: new Set<string>(),
-      runs: [payload.run, ...current.runs.filter((run) => run.id !== payload.run.id)],
-      nodes: hydrateNodeOutputs(current.nodes, payload.run)
+      runs: [run, ...current.runs].slice(0, 100),
+      nodes: current.nodes.map((node) => {
+        const execution = executionByNodeId.get(node.id);
+        if (!execution) return node;
+
+        const outputs = execution.outputs ?? {};
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            status: execution.status,
+            error: execution.error ?? null,
+            output: typeof outputs.output === "string" ? outputs.output : node.data.output,
+            outputUrl: typeof outputs.outputUrl === "string" ? outputs.outputUrl : node.data.outputUrl,
+            imageUrl:
+              typeof outputs.outputUrl === "string" && node.type !== "upload-image" ? outputs.outputUrl : node.data.imageUrl,
+            videoUrl:
+              typeof outputs.outputUrl === "string" && node.type === "upload-video" ? outputs.outputUrl : node.data.videoUrl
+          }
+        };
+      })
     }));
 
-    return payload.run;
-  },
-
-  undo() {
-    set((state) => {
-      const previous = state.past.at(-1);
-      if (!previous) return state;
-
-      return {
-        nodes: previous.nodes,
-        edges: previous.edges,
-        workflowName: previous.workflowName,
-        past: state.past.slice(0, -1),
-        future: [snapshotFromValues(state.nodes, state.edges, state.workflowName), ...state.future].slice(0, 100),
-        selectedNodes: []
-      };
-    });
-  },
-
-  redo() {
-    set((state) => {
-      const next = state.future[0];
-      if (!next) return state;
-
-      return {
-        nodes: next.nodes,
-        edges: next.edges,
-        workflowName: next.workflowName,
-        future: state.future.slice(1),
-        past: [...state.past, snapshotFromValues(state.nodes, state.edges, state.workflowName)].slice(-100),
-        selectedNodes: []
-      };
-    });
+    return run;
   }
 }));

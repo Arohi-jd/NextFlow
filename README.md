@@ -1,6 +1,6 @@
 # NextFlow
 
-[![Watch Demo](https://img.shields.io/badge/Watch-Demo-red?style=for-the-badge&logo=google-drive)](GOOGLE_DRIVE_LINK_HERE)
+[![Watch Demo](https://img.shields.io/badge/Watch-Demo-red?style=for-the-badge&logo=google-drive)]([GOOGLE_DRIVE_LINK_HERE](https://drive.google.com/file/d/1x3SdyPXyMhBUt4M_G08qL4yZK9EKINn2/view?usp=sharing))
 
 > Connect text, images, and video into powerful LLM pipelines. Watch your AI think in real time.
 

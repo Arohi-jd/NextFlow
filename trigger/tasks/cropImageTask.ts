@@ -1,7 +1,7 @@
 import { task } from "@trigger.dev/sdk/v3";
-import { prisma } from "@/lib/prisma";
-import { cropImageWithTransloadit } from "@/lib/transloadit";
-import { sanitizeExecutionPayload } from "@/lib/utils/persistence";
+import { prisma } from "../../lib/prisma";
+import { cropImageWithTransloadit } from "../../lib/transloadit";
+import { sanitizeExecutionPayload } from "../../lib/utils/persistence";
 
 type CropImageTaskPayload = {
   nodeExecutionId: string;

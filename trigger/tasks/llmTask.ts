@@ -1,10 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Groq from "groq-sdk";
 import { task } from "@trigger.dev/sdk/v3";
-import { getGeminiApiKey, getGroqApiKey } from "@/lib/env";
-import { extractFrameWithTransloadit } from "@/lib/transloadit";
-import { prisma } from "@/lib/prisma";
-import { sanitizeExecutionPayload } from "@/lib/utils/persistence";
+import { getGeminiApiKey, getGroqApiKey } from "../../lib/env";
+import { extractFrameWithTransloadit } from "../../lib/transloadit";
+import { prisma } from "../../lib/prisma";
+import { sanitizeExecutionPayload } from "../../lib/utils/persistence";
 
 type LlmTaskPayload = {
   nodeExecutionId: string;

@@ -1,42 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Image as ImageIcon, Sparkles, Video } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { KreaExpandedSidebar } from "@/components/krea/KreaSidebar";
 import { homeCards } from "@/lib/kreaData";
-
-function CardOverlayIcon({ kind }: { kind: "image" | "video" | "enhance" | "realtime" }) {
-  if (kind === "image") {
-    return (
-      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-[18px] bg-[#f1f1f1] shadow-[0_12px_24px_rgba(0,0,0,0.3)]">
-        <div className="flex h-[44px] w-[44px] items-center justify-center rounded-[13px] bg-[linear-gradient(180deg,#53c1ff_0%,#1a88ff_100%)]">
-          <ImageIcon className="h-5 w-5 text-white" />
-        </div>
-      </div>
-    );
-  }
-
-  if (kind === "video") {
-    return (
-      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#ffc942_0%,#ffae00_100%)] shadow-[0_12px_24px_rgba(0,0,0,0.3)]">
-        <Video className="h-6 w-6 fill-current text-white" />
-      </div>
-    );
-  }
-
-  if (kind === "enhance") {
-    return (
-      <div className="flex h-[62px] w-[62px] items-center justify-center rounded-[18px] bg-[#0f0f10] shadow-[0_12px_24px_rgba(0,0,0,0.3)]">
-        <Sparkles className="h-6 w-6 text-white" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-[62px] w-[62px] items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#53c1ff_0%,#1a88ff_100%)] shadow-[0_12px_24px_rgba(0,0,0,0.3)]">
-      <span className="text-[28px] italic leading-none text-white">k</span>
-    </div>
-  );
-}
 
 export default function HomePage() {
   return (
@@ -75,19 +41,20 @@ export default function HomePage() {
               {homeCards.map((card, index) => (
                 <Link key={card.title} href={card.href} className="group block">
                   <div className="relative overflow-hidden rounded-[20px] bg-[#101010] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                    {index === 0 && (
-                      <div className="absolute left-3 top-[-2px] z-10 rounded-[12px] bg-[#2d65ff] px-3.5 py-1.5 text-[12px] font-medium tracking-[-0.02em] text-white shadow-[0_12px_24px_rgba(45,101,255,0.34)]">
-                        <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-white/85 align-middle" />
-                        Click here to open the image tool
-                        <span className="absolute left-1/2 top-full h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[3px] bg-[#2d65ff]" />
-                      </div>
-                    )}
-
                     <div className="relative aspect-[1.68/1]">
-                      <Image src={card.image!} alt={card.title} fill className="object-cover transition duration-300 group-hover:scale-[1.02]" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <CardOverlayIcon kind={card.kind as "image" | "video" | "enhance" | "realtime"} />
-                      </div>
+                      {card.image?.endsWith(".mp4") ? (
+                        <video
+                          src={card.image}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <Image src={card.image!} alt={card.title} fill className="object-cover transition duration-300 group-hover:scale-[1.02]" />
+                      )}
                     </div>
                   </div>
 

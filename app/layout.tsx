@@ -14,21 +14,17 @@ export default function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const body = (
-    <html lang="en">
-      <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased">
-        {children}
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased" suppressHydrationWarning>
+        {isDevelopmentAuthBypassEnabled() ? (
+          children
+        ) : (
+          <ClerkProvider signInFallbackRedirectUrl="/" signUpFallbackRedirectUrl="/">
+            {children}
+          </ClerkProvider>
+        )}
       </body>
     </html>
-  );
-
-  if (isDevelopmentAuthBypassEnabled()) {
-    return body;
-  }
-
-  return (
-    <ClerkProvider signInFallbackRedirectUrl="/" signUpFallbackRedirectUrl="/">
-      {body}
-    </ClerkProvider>
   );
 }
